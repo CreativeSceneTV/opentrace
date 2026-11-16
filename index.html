@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenTrace</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#6b6b6b;--line:#e3e3e3;--acc:#0b57d0;--code:#f6f6f6}
+@media(prefers-color-scheme:dark){:root{--bg:#121212;--fg:#ececec;--mut:#9a9a9a;--line:#2a2a2a;--acc:#8ab4f8;--code:#1b1b1b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mut);margin:0 0 24px}
+a{color:var(--acc)}
+input,button{font:inherit;color:inherit}
+input[type=search],input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line);background:var(--bg);border-radius:6px}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px}
+nav button{border:1px solid var(--line);background:none;padding:5px 11px;border-radius:999px;cursor:pointer;font-size:.9rem}
+nav button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.t{border-top:1px solid var(--line);padding:18px 0}
+.t h3{margin:0;font-size:1rem}
+.h{margin:2px 0 10px;color:var(--mut);font-size:.88rem}
+.h code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.85em;user-select:all}
+form{display:flex;gap:8px}
+form button{border:1px solid var(--fg);background:var(--fg);color:var(--bg);padding:0 16px;border-radius:6px;cursor:pointer}
+form button:disabled{opacity:.5}
+pre{margin:10px 0 0;padding:12px;background:var(--code);border-radius:6px;font:.8rem/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}
+pre:empty{display:none}
+footer{margin-top:40px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<main>
+<h1>OpenTrace</h1>
+<p class="sub">Free OSINT tools in one place. Run a lookup or open the source.</p>
+<input type="search" id="s" placeholder="Filter tools…" aria-label="Filter tools">
+<nav id="nav" aria-label="Categories"></nav>
+<div id="list"></div>
+<footer>Use these sources lawfully and respect privacy, provider terms and data-protection laws. Tools marked “needs key” work after you add the key in Netlify environment variables.</footer>
+</main>
+<script>
+const C=["IP & network","Domain & web","Username","Email","Phone","Files & images","Threat intel","Companies & research","Platforms"];
+// [cat, id, name, url, kind, placeholder, hint]  kind: api | phone | exif | ocr | link
+const R=[
+[0,"ipinfo","IPinfo","https://ipinfo.io/","api","8.8.8.8"],
+[0,"ipapi","IP-API","https://ip-api.com/","api","8.8.8.8"],
+[0,"ripestat","RIPEstat","https://stat.ripe.net/","api","8.8.8.8 or prefix"],
+[0,"rdap","RDAP","https://rdap.org/","api","IP or domain"],
+[0,"dns","Google DNS","https://dns.google/","api","example.com MX","Add a record type: A, AAAA, MX, TXT, NS"],
+[0,"hackertarget","HackerTarget","https://hackertarget.com/","api","example.com","Host search (free tier is rate limited)"],
+[0,"abuseipdb","AbuseIPDB","https://www.abuseipdb.com/","api","8.8.8.8","Needs key: ABUSEIPDB_KEY"],
+[0,"greynoise","GreyNoise","https://www.greynoise.io/","api","8.8.8.8","Community API; optional key: GREYNOISE_KEY"],
+[1,"crtsh","crt.sh","https://crt.sh/","api","example.com","Certificate transparency subdomains"],
+[1,"urlhaus","URLhaus","https://urlhaus.abuse.ch/","api","domain or IP","Needs key: ABUSECH_KEY"],
+[1,"urlscan","urlscan.io","https://urlscan.io/","api","example.com","Past scans. Optional key: URLSCAN_KEY"],
+[1,"safebrowsing","Google Safe Browsing","https://developers.google.com/safe-browsing","api","https://example.com/","Needs key: GSB_KEY"],
+[1,"commoncrawl","Common Crawl","https://commoncrawl.org/","api","example.com/*","Index of crawled URLs"],
+[1,"wayback","Wayback Machine","https://web.archive.org/","api","example.com","Archived snapshots"],
+[1,"dnsdumpster","DNSDumpster","https://dnsdumpster.com/","api","example.com","Needs key: DNSDUMPSTER_KEY"],
+[1,"securitytrails","SecurityTrails","https://securitytrails.com/","api","example.com","Subdomains. Needs key: SECURITYTRAILS_KEY"],
+[2,"wmn","WhatsMyName","https://github.com/WebBreacher/WhatsMyName","api","username","Checks about 90 sites from the WhatsMyName dataset"],
+[2,"","Sherlock","https://github.com/sherlock-project/sherlock","link","","Run locally: pip install sherlock-project, then sherlock <b>username</b>"],
+[2,"","Maigret","https://github.com/soxoj/maigret","link","","Run locally: pip install maigret, then maigret <b>username</b>"],
+[2,"","Blackbird","https://github.com/p1ngul1n0/blackbird","link","","Run locally: python blackbird.py -u <b>username</b>"],
+[2,"","Social Analyzer","https://github.com/qeeqbox/social-analyzer","link","","Run locally: npx social-analyzer --username <b>username</b>"],
+[3,"hibp","Have I Been Pwned","https://haveibeenpwned.com/","api","name@example.com","Needs key: HIBP_KEY"],
+[3,"hunter","Hunter","https://hunter.io/","api","example.com","Needs key: HUNTER_KEY"],
+[3,"emailrep","EmailRep","https://emailrep.io/","api","name@example.com","Optional key: EMAILREP_KEY"],
+[3,"","Epieos","https://epieos.com/","link","","Web tool. Opens in a new tab."],
+[3,"","Holehe","https://github.com/megadose/holehe","link","","Run locally: pip install holehe, then holehe <b>email</b>"],
+[3,"","theHarvester","https://github.com/laramies/theHarvester","link","","Run locally: theHarvester -d <b>example.com</b> -b all"],
+[4,"phone","Google libphonenumber","https://github.com/google/libphonenumber","phone","+14155552671","Runs in your browser. Include the country code."],
+[4,"numverify","Numverify","https://numverify.com/","api","+14155552671","Needs key: NUMVERIFY_KEY"],
+[4,"abstractphone","Abstract Phone Validation","https://www.abstractapi.com/phone-validation-api","api","+14155552671","Needs key: ABSTRACT_KEY"],
+[4,"","PhoneInfoga","https://github.com/sundowndev/phoneinfoga","link","","Run locally: phoneinfoga scan -n <b>+14155552671</b>"],
+[5,"exif","ExifTool","https://exiftool.org/","exif","","Reads metadata in your browser. Nothing is uploaded."],
+[5,"ocr","Tesseract OCR","https://github.com/tesseract-ocr/tesseract","ocr","","Extracts text from an image in your browser."],
+[5,"","FotoForensics","https://fotoforensics.com/","link","","Error level analysis. Uploads go to their site."],
+[5,"","CyberChef","https://github.com/gchq/CyberChef","link","","Open the hosted app: <a href='https://gchq.github.io/CyberChef/' target='_blank' rel='noopener'>gchq.github.io/CyberChef</a>"],
+[5,"","Google Lens","https://lens.google/","link","","Reverse image search."],
+[5,"","MediaInfo","https://mediaarea.net/en/MediaInfo","link","","Run locally: mediainfo <b>file</b>"],
+[5,"","OpenCV","https://opencv.org/","link","","Library for image analysis. Needs your own backend."],
+[5,"","YARA","https://github.com/VirusTotal/yara","link","","Run locally: yara rules.yar <b>file</b>"],
+[6,"nvd","NIST NVD","https://nvd.nist.gov/","api","CVE-2021-44228 or keyword"],
+[6,"kev","CISA KEV","https://www.cisa.gov/known-exploited-vulnerabilities-catalog","api","CVE, vendor or product"],
+[6,"otx","AlienVault OTX","https://otx.alienvault.com/","api","IP, domain or file hash","Optional key: OTX_KEY"],
+[6,"malwarebazaar","MalwareBazaar","https://bazaar.abuse.ch/","api","SHA256 hash","Needs key: ABUSECH_KEY"],
+[6,"threatfox","ThreatFox","https://threatfox.abuse.ch/","api","IOC (IP, domain, hash)","Needs key: ABUSECH_KEY"],
+[6,"phishtank","PhishTank","https://phishtank.org/","api","https://example.com/","Needs key: PHISHTANK_KEY"],
+[6,"","MISP","https://github.com/MISP/MISP","link","","Self-hosted threat sharing platform."],
+[6,"","OpenCTI","https://github.com/OpenCTI-Platform","link","","Self-hosted threat intelligence platform."],
+[6,"","YARA Rules","https://github.com/Yara-Rules/rules","link","","Community rule set for YARA."],
+[7,"opencorporates","OpenCorporates","https://opencorporates.com/","api","company name","Needs key: OPENCORPORATES_KEY"],
+[7,"wikidata","Wikidata","https://www.wikidata.org/","api","person, place or company"],
+[7,"gdelt","GDELT Project","https://www.gdeltproject.org/","api","search terms","Recent news articles"],
+[7,"archive","Internet Archive","https://archive.org/","api","search terms"],
+[7,"nominatim","Nominatim","https://nominatim.org/","api","address or place","Geocoding with OpenStreetMap data"],
+[7,"geonames","GeoNames","https://www.geonames.org/","api","place name","Needs GEONAMES_USER (free account)"],
+[7,"","OpenStreetMap","https://www.openstreetmap.org/","link","","Map data. Opens in a new tab."],
+[8,"","SpiderFoot","https://github.com/smicallef/spiderfoot","link","","Self-host: python sf.py -l 127.0.0.1:5001"],
+[8,"","OWASP Amass","https://github.com/owasp-amass/amass","link","","Run locally: amass enum -d <b>example.com</b>"],
+[8,"","ProjectDiscovery","https://github.com/projectdiscovery","link","","Includes subfinder, httpx, nuclei and more."],
+[8,"","OSINT Framework","https://osintframework.com/","link","","Directory of OSINT resources."],
+[8,"","APIs for OSINT","https://github.com/cipher387/API-s-for-OSINT","link","","List of OSINT APIs."],
+[8,"","OpenOSINT","https://github.com/OpenOSINT/OpenOSINT","link","","Open-source OSINT collection."]
+];
+const $=s=>document.querySelector(s),el=(t,p={},h="")=>Object.assign(document.createElement(t),p,h?{innerHTML:h}:{});
+const load=src=>new Promise((ok,no)=>{const s=el("script",{src});s.onload=ok;s.onerror=no;document.head.append(s)});
+let cat=0;
+const nav=$("#nav");
+C.forEach((n,i)=>nav.append(el("button",{textContent:n,onclick:()=>{cat=i;$("#s").value="";draw()}})));
+
+async function run(r,box,out,btn){
+  const [,id,,,kind]=r;out.textContent="Working…";btn.disabled=true;
+  try{
+    if(kind==="api"){
+      const v=box.value.trim();if(!v)throw Error("Enter a value first.");
+      const x=await fetch(`/api?t=${id}&q=${encodeURIComponent(v)}`),t=await x.text();
+      try{out.textContent=JSON.stringify(JSON.parse(t),null,2)}catch{out.textContent=t||"No results."}
+    }else if(kind==="phone"){
+      await load("https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.60/bundle/libphonenumber-max.js");
+      const p=libphonenumber.parsePhoneNumberFromString(box.value.trim());
+      if(!p)throw Error("Could not parse. Start with + and the country code.");
+      out.textContent=JSON.stringify({valid:p.isValid(),possible:p.isPossible(),country:p.country,type:p.getType(),international:p.formatInternational(),national:p.formatNational(),e164:p.number},null,2);
+    }else if(kind==="exif"){
+      const f=box.files[0];if(!f)throw Error("Choose an image first.");
+      await load("https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js");
+      const d=await exifr.parse(f,true);
+      out.textContent=d?JSON.stringify(d,(k,v)=>v instanceof Uint8Array?"[binary]":v,2):"No metadata found.";
+    }else if(kind==="ocr"){
+      const f=box.files[0];if(!f)throw Error("Choose an image first.");
+      await load("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+      out.textContent=(await Tesseract.recognize(f,"eng")).data.text||"No text found.";
+    }
+  }catch(e){out.textContent=e.message}
+  btn.disabled=false;
+}
+function tool(r){
+  const [,,name,url,kind,ph,hint=""]=r,d=el("section",{className:"t"});
+  d.append(el("h3",{},`<a href="${url}" target="_blank" rel="noopener">${name}</a>`));
+  if(hint)d.append(el("p",{className:"h"},hint));
+  if(kind!=="link"){
+    const f=el("form"),file=kind==="exif"||kind==="ocr";
+    const i=el("input",file?{type:"file",accept:"image/*"}:{type:"text",placeholder:ph,autocomplete:"off",spellcheck:false});
+    i.setAttribute("aria-label",name+" input");
+    const b=el("button",{type:"submit",textContent:file?"Analyze":"Run"}),o=el("pre");
+    f.append(i,b);f.onsubmit=e=>{e.preventDefault();run(r,i,o,b)};
+    d.append(f,o);
+  }
+  return d;
+}
+function draw(){
+  const q=$("#s").value.toLowerCase().trim(),l=$("#list");l.textContent="";
+  [...nav.children].forEach((b,i)=>b.setAttribute("aria-pressed",!q&&i===cat));
+  const rows=R.filter(r=>q?(r[2]+" "+C[r[0]]+" "+(r[6]||"")).toLowerCase().includes(q):r[0]===cat);
+  rows.forEach(r=>l.append(tool(r)));
+  if(!rows.length)l.append(el("p",{className:"sub",textContent:"No tools match that filter."}));
+}
+$("#s").oninput=draw;draw();
+</script>
+</body>
+</html>
