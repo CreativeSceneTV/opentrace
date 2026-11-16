@@ -9,156 +9,194 @@
 @media(prefers-color-scheme:dark){:root{--bg:#121212;--fg:#ececec;--mut:#9a9a9a;--line:#2a2a2a;--acc:#8ab4f8;--code:#1b1b1b}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+main{max-width:760px;margin:0 auto;padding:48px 20px 80px}
 h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
-.sub{color:var(--mut);margin:0 0 24px}
-a{color:var(--acc)}
+.sub,.mut{color:var(--mut)}.sub{margin:0 0 24px}
+a{color:var(--acc);overflow-wrap:anywhere}
 input,button{font:inherit;color:inherit}
-input[type=search],input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line);background:var(--bg);border-radius:6px}
-input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-nav{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px}
-nav button{border:1px solid var(--line);background:none;padding:5px 11px;border-radius:999px;cursor:pointer;font-size:.9rem}
-nav button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.t{border-top:1px solid var(--line);padding:18px 0}
-.t h3{margin:0;font-size:1rem}
-.h{margin:2px 0 10px;color:var(--mut);font-size:.88rem}
-.h code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.85em;user-select:all}
 form{display:flex;gap:8px}
-form button{border:1px solid var(--fg);background:var(--fg);color:var(--bg);padding:0 16px;border-radius:6px;cursor:pointer}
-form button:disabled{opacity:.5}
-pre{margin:10px 0 0;padding:12px;background:var(--code);border-radius:6px;font:.8rem/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}
-pre:empty{display:none}
-footer{margin-top:40px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line);padding-top:16px}
+#q{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--line);background:var(--bg);border-radius:6px;font-size:1.05rem}
+form button{border:1px solid var(--fg);background:var(--fg);color:var(--bg);padding:0 20px;border-radius:6px;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 0;font-size:.88rem}
+.row button,.row label{background:none;border:0;padding:0;color:var(--acc);cursor:pointer;text-decoration:underline}
+#rep{margin-top:28px}
+#head{font-size:.95rem;margin-bottom:6px}
+.r{border-top:1px solid var(--line);padding:14px 0}
+.r h3{margin:0;font-size:.98rem}
+.r ul{margin:6px 0 0;padding-left:18px}
+.r li{overflow-wrap:anywhere}
+.s{font-size:.85rem;color:var(--mut);font-weight:400;margin-left:6px}
+details{margin-top:6px;font-size:.85rem}
+summary{cursor:pointer;color:var(--mut)}
+pre{margin:6px 0 0;padding:10px;background:var(--code);border-radius:6px;font:.78rem/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.85em}
+footer{margin-top:40px;color:var(--mut);font-size:.85rem}
+footer p{margin:6px 0}
 </style>
 </head>
 <body>
 <main>
 <h1>OpenTrace</h1>
-<p class="sub">Free OSINT tools in one place. Run a lookup or open the source.</p>
-<input type="search" id="s" placeholder="Filter tools…" aria-label="Filter tools">
-<nav id="nav" aria-label="Categories"></nav>
-<div id="list"></div>
-<footer>Use these sources lawfully and respect privacy, provider terms and data-protection laws. Tools marked “needs key” work after you add the key in Netlify environment variables.</footer>
+<p class="sub">Type a name, email, phone number, username, IP, domain, URL, CVE or file hash. A report builds itself.</p>
+<form id="f"><input id="q" type="search" placeholder="Search anything…" autocomplete="off" spellcheck="false" autofocus aria-label="Search"><button>Trace</button></form>
+<div class="row"><label>Or analyze an image<input id="img" type="file" accept="image/*" hidden></label><button id="cp" hidden>Copy report</button></div>
+<div id="rep" aria-live="polite"></div>
+<footer>
+<details><summary>All sources</summary><div id="src"></div></details>
+<p>Use these sources lawfully and respect privacy, provider terms and data-protection laws. Results are public data and may be incomplete or about someone else with the same name. Open source (MIT).</p>
+</footer>
 </main>
 <script>
-const C=["IP & network","Domain & web","Username","Email","Phone","Files & images","Threat intel","Companies & research","Platforms"];
-// [cat, id, name, url, kind, placeholder, hint]  kind: api | phone | exif | ocr | link
-const R=[
-[0,"ipinfo","IPinfo","https://ipinfo.io/","api","8.8.8.8"],
-[0,"ipapi","IP-API","https://ip-api.com/","api","8.8.8.8"],
-[0,"ripestat","RIPEstat","https://stat.ripe.net/","api","8.8.8.8 or prefix"],
-[0,"rdap","RDAP","https://rdap.org/","api","IP or domain"],
-[0,"dns","Google DNS","https://dns.google/","api","example.com MX","Add a record type: A, AAAA, MX, TXT, NS"],
-[0,"hackertarget","HackerTarget","https://hackertarget.com/","api","example.com","Host search (free tier is rate limited)"],
-[0,"abuseipdb","AbuseIPDB","https://www.abuseipdb.com/","api","8.8.8.8","Needs key: ABUSEIPDB_KEY"],
-[0,"greynoise","GreyNoise","https://www.greynoise.io/","api","8.8.8.8","Community API; optional key: GREYNOISE_KEY"],
-[1,"crtsh","crt.sh","https://crt.sh/","api","example.com","Certificate transparency subdomains"],
-[1,"urlhaus","URLhaus","https://urlhaus.abuse.ch/","api","domain or IP","Needs key: ABUSECH_KEY"],
-[1,"urlscan","urlscan.io","https://urlscan.io/","api","example.com","Past scans. Optional key: URLSCAN_KEY"],
-[1,"safebrowsing","Google Safe Browsing","https://developers.google.com/safe-browsing","api","https://example.com/","Needs key: GSB_KEY"],
-[1,"commoncrawl","Common Crawl","https://commoncrawl.org/","api","example.com/*","Index of crawled URLs"],
-[1,"wayback","Wayback Machine","https://web.archive.org/","api","example.com","Archived snapshots"],
-[1,"dnsdumpster","DNSDumpster","https://dnsdumpster.com/","api","example.com","Needs key: DNSDUMPSTER_KEY"],
-[1,"securitytrails","SecurityTrails","https://securitytrails.com/","api","example.com","Subdomains. Needs key: SECURITYTRAILS_KEY"],
-[2,"wmn","WhatsMyName","https://github.com/WebBreacher/WhatsMyName","api","username","Checks about 90 sites from the WhatsMyName dataset"],
-[2,"","Sherlock","https://github.com/sherlock-project/sherlock","link","","Run locally: pip install sherlock-project, then sherlock <b>username</b>"],
-[2,"","Maigret","https://github.com/soxoj/maigret","link","","Run locally: pip install maigret, then maigret <b>username</b>"],
-[2,"","Blackbird","https://github.com/p1ngul1n0/blackbird","link","","Run locally: python blackbird.py -u <b>username</b>"],
-[2,"","Social Analyzer","https://github.com/qeeqbox/social-analyzer","link","","Run locally: npx social-analyzer --username <b>username</b>"],
-[3,"hibp","Have I Been Pwned","https://haveibeenpwned.com/","api","name@example.com","Needs key: HIBP_KEY"],
-[3,"hunter","Hunter","https://hunter.io/","api","example.com","Needs key: HUNTER_KEY"],
-[3,"emailrep","EmailRep","https://emailrep.io/","api","name@example.com","Optional key: EMAILREP_KEY"],
-[3,"","Epieos","https://epieos.com/","link","","Web tool. Opens in a new tab."],
-[3,"","Holehe","https://github.com/megadose/holehe","link","","Run locally: pip install holehe, then holehe <b>email</b>"],
-[3,"","theHarvester","https://github.com/laramies/theHarvester","link","","Run locally: theHarvester -d <b>example.com</b> -b all"],
-[4,"phone","Google libphonenumber","https://github.com/google/libphonenumber","phone","+14155552671","Runs in your browser. Include the country code."],
-[4,"numverify","Numverify","https://numverify.com/","api","+14155552671","Needs key: NUMVERIFY_KEY"],
-[4,"abstractphone","Abstract Phone Validation","https://www.abstractapi.com/phone-validation-api","api","+14155552671","Needs key: ABSTRACT_KEY"],
-[4,"","PhoneInfoga","https://github.com/sundowndev/phoneinfoga","link","","Run locally: phoneinfoga scan -n <b>+14155552671</b>"],
-[5,"exif","ExifTool","https://exiftool.org/","exif","","Reads metadata in your browser. Nothing is uploaded."],
-[5,"ocr","Tesseract OCR","https://github.com/tesseract-ocr/tesseract","ocr","","Extracts text from an image in your browser."],
-[5,"","FotoForensics","https://fotoforensics.com/","link","","Error level analysis. Uploads go to their site."],
-[5,"","CyberChef","https://github.com/gchq/CyberChef","link","","Open the hosted app: <a href='https://gchq.github.io/CyberChef/' target='_blank' rel='noopener'>gchq.github.io/CyberChef</a>"],
-[5,"","Google Lens","https://lens.google/","link","","Reverse image search."],
-[5,"","MediaInfo","https://mediaarea.net/en/MediaInfo","link","","Run locally: mediainfo <b>file</b>"],
-[5,"","OpenCV","https://opencv.org/","link","","Library for image analysis. Needs your own backend."],
-[5,"","YARA","https://github.com/VirusTotal/yara","link","","Run locally: yara rules.yar <b>file</b>"],
-[6,"nvd","NIST NVD","https://nvd.nist.gov/","api","CVE-2021-44228 or keyword"],
-[6,"kev","CISA KEV","https://www.cisa.gov/known-exploited-vulnerabilities-catalog","api","CVE, vendor or product"],
-[6,"otx","AlienVault OTX","https://otx.alienvault.com/","api","IP, domain or file hash","Optional key: OTX_KEY"],
-[6,"malwarebazaar","MalwareBazaar","https://bazaar.abuse.ch/","api","SHA256 hash","Needs key: ABUSECH_KEY"],
-[6,"threatfox","ThreatFox","https://threatfox.abuse.ch/","api","IOC (IP, domain, hash)","Needs key: ABUSECH_KEY"],
-[6,"phishtank","PhishTank","https://phishtank.org/","api","https://example.com/","Needs key: PHISHTANK_KEY"],
-[6,"","MISP","https://github.com/MISP/MISP","link","","Self-hosted threat sharing platform."],
-[6,"","OpenCTI","https://github.com/OpenCTI-Platform","link","","Self-hosted threat intelligence platform."],
-[6,"","YARA Rules","https://github.com/Yara-Rules/rules","link","","Community rule set for YARA."],
-[7,"opencorporates","OpenCorporates","https://opencorporates.com/","api","company name","Needs key: OPENCORPORATES_KEY"],
-[7,"wikidata","Wikidata","https://www.wikidata.org/","api","person, place or company"],
-[7,"gdelt","GDELT Project","https://www.gdeltproject.org/","api","search terms","Recent news articles"],
-[7,"archive","Internet Archive","https://archive.org/","api","search terms"],
-[7,"nominatim","Nominatim","https://nominatim.org/","api","address or place","Geocoding with OpenStreetMap data"],
-[7,"geonames","GeoNames","https://www.geonames.org/","api","place name","Needs GEONAMES_USER (free account)"],
-[7,"","OpenStreetMap","https://www.openstreetmap.org/","link","","Map data. Opens in a new tab."],
-[8,"","SpiderFoot","https://github.com/smicallef/spiderfoot","link","","Self-host: python sf.py -l 127.0.0.1:5001"],
-[8,"","OWASP Amass","https://github.com/owasp-amass/amass","link","","Run locally: amass enum -d <b>example.com</b>"],
-[8,"","ProjectDiscovery","https://github.com/projectdiscovery","link","","Includes subfinder, httpx, nuclei and more."],
-[8,"","OSINT Framework","https://osintframework.com/","link","","Directory of OSINT resources."],
-[8,"","APIs for OSINT","https://github.com/cipher387/API-s-for-OSINT","link","","List of OSINT APIs."],
-[8,"","OpenOSINT","https://github.com/OpenOSINT/OpenOSINT","link","","Open-source OSINT collection."]
-];
-const $=s=>document.querySelector(s),el=(t,p={},h="")=>Object.assign(document.createElement(t),p,h?{innerHTML:h}:{});
-const load=src=>new Promise((ok,no)=>{const s=el("script",{src});s.onload=ok;s.onerror=no;document.head.append(s)});
-let cat=0;
-const nav=$("#nav");
-C.forEach((n,i)=>nav.append(el("button",{textContent:n,onclick:()=>{cat=i;$("#s").value="";draw()}})));
+const N={ipinfo:"IPinfo|https://ipinfo.io/",ipapi:"IP-API|https://ip-api.com/",ripestat:"RIPEstat|https://stat.ripe.net/",rdap:"RDAP|https://rdap.org/",dns:"Google DNS|https://dns.google/",hackertarget:"HackerTarget|https://hackertarget.com/",abuseipdb:"AbuseIPDB|https://www.abuseipdb.com/",greynoise:"GreyNoise|https://www.greynoise.io/",crtsh:"crt.sh|https://crt.sh/",urlhaus:"URLhaus|https://urlhaus.abuse.ch/",urlscan:"urlscan.io|https://urlscan.io/",safebrowsing:"Google Safe Browsing|https://developers.google.com/safe-browsing",commoncrawl:"Common Crawl|https://commoncrawl.org/",wayback:"Wayback Machine|https://web.archive.org/",dnsdumpster:"DNSDumpster|https://dnsdumpster.com/",securitytrails:"SecurityTrails|https://securitytrails.com/",wmn:"WhatsMyName|https://github.com/WebBreacher/WhatsMyName",hibp:"Have I Been Pwned|https://haveibeenpwned.com/",hunter:"Hunter|https://hunter.io/",emailrep:"EmailRep|https://emailrep.io/",phone:"libphonenumber|https://github.com/google/libphonenumber",numverify:"Numverify|https://numverify.com/",abstractphone:"Abstract Phone Validation|https://www.abstractapi.com/phone-validation-api",exif:"ExifTool-style metadata|https://exiftool.org/",ocr:"Tesseract OCR|https://github.com/tesseract-ocr/tesseract",nvd:"NIST NVD|https://nvd.nist.gov/",kev:"CISA KEV|https://www.cisa.gov/known-exploited-vulnerabilities-catalog",otx:"AlienVault OTX|https://otx.alienvault.com/",malwarebazaar:"MalwareBazaar|https://bazaar.abuse.ch/",threatfox:"ThreatFox|https://threatfox.abuse.ch/",phishtank:"PhishTank|https://phishtank.org/",opencorporates:"OpenCorporates|https://opencorporates.com/",wikidata:"Wikidata|https://www.wikidata.org/",gdelt:"GDELT|https://www.gdeltproject.org/",archive:"Internet Archive|https://archive.org/",nominatim:"Nominatim|https://nominatim.org/",geonames:"GeoNames|https://www.geonames.org/"};
+const MORE={"Run locally or open in a new tab":[["Sherlock","https://github.com/sherlock-project/sherlock"],["Maigret","https://github.com/soxoj/maigret"],["Blackbird","https://github.com/p1ngul1n0/blackbird"],["Social Analyzer","https://github.com/qeeqbox/social-analyzer"],["Holehe","https://github.com/megadose/holehe"],["theHarvester","https://github.com/laramies/theHarvester"],["Epieos","https://epieos.com/"],["PhoneInfoga","https://github.com/sundowndev/phoneinfoga"],["ExifTool","https://exiftool.org/"],["FotoForensics","https://fotoforensics.com/"],["CyberChef","https://github.com/gchq/CyberChef"],["YARA","https://github.com/VirusTotal/yara"],["MediaInfo","https://mediaarea.net/en/MediaInfo"],["OpenCV","https://opencv.org/"],["Google Lens","https://lens.google/"],["MISP","https://github.com/MISP/MISP"],["OpenCTI","https://github.com/OpenCTI-Platform"],["YARA Rules","https://github.com/Yara-Rules/rules"],["OpenStreetMap","https://www.openstreetmap.org/"],["SpiderFoot","https://github.com/smicallef/spiderfoot"],["OWASP Amass","https://github.com/owasp-amass/amass"],["ProjectDiscovery","https://github.com/projectdiscovery"],["OSINT Framework","https://osintframework.com/"],["APIs for OSINT","https://github.com/cipher387/API-s-for-OSINT"],["OpenOSINT","https://github.com/OpenOSINT/OpenOSINT"]]};
 
-async function run(r,box,out,btn){
-  const [,id,,,kind]=r;out.textContent="Working…";btn.disabled=true;
-  try{
-    if(kind==="api"){
-      const v=box.value.trim();if(!v)throw Error("Enter a value first.");
-      const x=await fetch(`/api?t=${id}&q=${encodeURIComponent(v)}`),t=await x.text();
-      try{out.textContent=JSON.stringify(JSON.parse(t),null,2)}catch{out.textContent=t||"No results."}
-    }else if(kind==="phone"){
-      await load("https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.60/bundle/libphonenumber-max.js");
-      const p=libphonenumber.parsePhoneNumberFromString(box.value.trim());
-      if(!p)throw Error("Could not parse. Start with + and the country code.");
-      out.textContent=JSON.stringify({valid:p.isValid(),possible:p.isPossible(),country:p.country,type:p.getType(),international:p.formatInternational(),national:p.formatNational(),e164:p.number},null,2);
-    }else if(kind==="exif"){
-      const f=box.files[0];if(!f)throw Error("Choose an image first.");
-      await load("https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js");
-      const d=await exifr.parse(f,true);
-      out.textContent=d?JSON.stringify(d,(k,v)=>v instanceof Uint8Array?"[binary]":v,2):"No metadata found.";
-    }else if(kind==="ocr"){
-      const f=box.files[0];if(!f)throw Error("Choose an image first.");
-      await load("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
-      out.textContent=(await Tesseract.recognize(f,"eng")).data.text||"No text found.";
-    }
-  }catch(e){out.textContent=e.message}
-  btn.disabled=false;
+const J=(t,...a)=>a.map(q=>[t,q]);
+const DOM=q=>[...J("dns",q+" A",q+" MX",q+" NS",q+" TXT"),...["rdap","crtsh","wayback","urlscan","hackertarget","otx","urlhaus","securitytrails","dnsdumpster","hunter"].map(t=>[t,q]),["commoncrawl",q+"/*"],["safebrowsing","http://"+q+"/"]];
+const P={
+ ip:q=>["ipinfo","ipapi","ripestat","rdap","abuseipdb","greynoise","otx"].map(t=>[t,q]),
+ domain:DOM,
+ url:q=>{const h=new URL(q).hostname;return[...DOM(h),["safebrowsing",q],["phishtank",q]]},
+ email:q=>{const[u,d]=q.split("@");return[["emailrep",q],["hibp",q],["dns",d+" MX"],["rdap",d],["wmn",u]]},
+ phone:q=>[["phone",q],["numverify",q],["abstractphone",q]],
+ username:q=>[["wmn",q.replace(/^@/,"")]],
+ name:q=>[...["wikidata","gdelt","archive","opencorporates","nominatim"].map(t=>[t,q]),...(/\s/.test(q)?[]:[["wmn",q]])],
+ cve:q=>[["nvd",q],["kev",q]],
+ hash:q=>[["malwarebazaar",q],["otx",q],["threatfox",q]]
+};
+const LOCAL={
+ username:q=>[`sherlock ${q}`,`maigret ${q}`,`python blackbird.py -u ${q}`,`npx social-analyzer --username ${q}`],
+ email:q=>[`holehe ${q}`,`theHarvester -d ${q.split("@")[1]} -b all`],
+ phone:q=>[`phoneinfoga scan -n ${q}`],
+ domain:q=>[`amass enum -d ${q}`,`theHarvester -d ${q} -b all`,`subfinder -d ${q}`],
+ name:q=>/\s/.test(q)?[]:[`sherlock ${q}`]
+};
+function detect(v){
+ if(/^https?:\/\/[^\s/]+/i.test(v))return"url";
+ if(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v))return"email";
+ if(/^CVE-\d{4}-\d{4,}$/i.test(v))return"cve";
+ if(/^([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})$/i.test(v))return"hash";
+ if(/^(\d{1,3}\.){3}\d{1,3}$/.test(v)||(/^[0-9a-f:]+$/i.test(v)&&(v.match(/:/g)||[]).length>=2))return"ip";
+ if(/^\+?[\d\s\-().]{7,20}$/.test(v)&&v.replace(/\D/g,"").length>=7)return"phone";
+ if(/^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(v))return"domain";
+ if(/^@?[\w.-]{3,30}$/.test(v))return v.startsWith("@")?"username":"name";
+ return"name";
 }
-function tool(r){
-  const [,,name,url,kind,ph,hint=""]=r,d=el("section",{className:"t"});
-  d.append(el("h3",{},`<a href="${url}" target="_blank" rel="noopener">${name}</a>`));
-  if(hint)d.append(el("p",{className:"h"},hint));
-  if(kind!=="link"){
-    const f=el("form"),file=kind==="exif"||kind==="ocr";
-    const i=el("input",file?{type:"file",accept:"image/*"}:{type:"text",placeholder:ph,autocomplete:"off",spellcheck:false});
-    i.setAttribute("aria-label",name+" input");
-    const b=el("button",{type:"submit",textContent:file?"Analyze":"Run"}),o=el("pre");
-    f.append(i,b);f.onsubmit=e=>{e.preventDefault();run(r,i,o,b)};
-    d.append(f,o);
+const LBL={url:"URL",email:"Email",cve:"CVE",hash:"File hash",ip:"IP address",phone:"Phone number",domain:"Domain",username:"Username",name:"Name or keyword"};
+
+const f=o=>Object.entries(o).filter(([,v])=>v!==undefined&&v!==null&&v!==""&&v!==false).map(([k,v])=>k+": "+v);
+const loc=(...a)=>a.filter(Boolean).join(", ");
+const ev=(d,n)=>(d.events||[]).filter(e=>e.eventAction===n).map(e=>e.eventDate.slice(0,10))[0];
+const ts=s=>s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+const S={
+ ipinfo:d=>f({IP:d.ip,Hostname:d.hostname,Location:loc(d.city,d.region,d.country),Org:d.org,Timezone:d.timezone}),
+ ipapi:d=>f({Location:loc(d.city,d.regionName,d.country),ISP:d.isp,Org:d.org,AS:d.as,Proxy:d.proxy,Hosting:d.hosting,Mobile:d.mobile}),
+ ripestat:d=>f({Prefix:d.data.resource,Announced:d.data.announced,ASN:(d.data.asns||[]).map(a=>"AS"+a.asn+" "+a.holder).join("; ")}),
+ rdap:d=>f({Name:d.ldhName||d.name,Handle:d.handle,Country:d.country,Status:(d.status||[]).join(", "),Registered:ev(d,"registration"),Expires:ev(d,"expiration"),"Last changed":ev(d,"last changed")}),
+ dns:d=>(d.Answer||[]).map(a=>a.data).concat(d.Answer?[]:["No records"]),
+ hackertarget:t=>String(t).split("\n").slice(0,40),
+ abuseipdb:d=>f({"Abuse score":d.data.abuseConfidenceScore+"%",Reports:d.data.totalReports,Country:d.data.countryCode,ISP:d.data.isp,Usage:d.data.usageType}),
+ greynoise:d=>f({Classification:d.classification,Name:d.name,Noise:d.noise,RIOT:d.riot,Note:d.message}),
+ crtsh:d=>{const n=[...new Set(d.flatMap(c=>c.name_value.split("\n")))].sort();return[n.length+" names in certificates",...n.slice(0,40)]},
+ urlhaus:d=>f({Status:d.query_status,URLs:d.url_count}),
+ urlscan:d=>d.results.slice(0,8).map(r=>({t:r.page.url+" ("+r.task.time.slice(0,10)+")",u:"https://urlscan.io/result/"+r._id+"/"})),
+ safebrowsing:d=>d.matches?d.matches.map(m=>"Flagged: "+m.threatType):["No threats listed"],
+ commoncrawl:t=>String(t).split("\n").filter(Boolean).slice(0,10).map(l=>{try{return JSON.parse(l).url}catch{return l}}),
+ wayback:d=>{const r=d.slice(1);return r.length?[r.length+" snapshots (up to 20 shown)",...r.slice(0,8).map(x=>({t:ts(x[0])+" "+x[1],u:`https://web.archive.org/web/${x[0]}/${x[1]}`}))]:["No snapshots"]},
+ securitytrails:(d,q)=>[(d.subdomains||[]).length+" subdomains",...(d.subdomains||[]).slice(0,30).map(s=>s+"."+q)],
+ wmn:d=>[`${d.found.length} possible matches on ${d.checked} sites checked`,...d.found.map(x=>({t:x.site,u:x.url}))],
+ hibp:d=>[d.length+" breaches",...d.map(b=>b.Name+" ("+b.BreachDate+")")],
+ hunter:d=>[...f({Organization:d.data.organization,Emails:(d.data.emails||[]).length}),...(d.data.emails||[]).slice(0,10).map(e=>e.value)],
+ emailrep:d=>f({Reputation:d.reputation,Suspicious:d.suspicious,References:d.references,"Credentials leaked":d.details?.credentials_leaked,"Data breach":d.details?.data_breach,"First seen":d.details?.first_seen,Profiles:(d.details?.profiles||[]).join(", ")}),
+ phone:d=>f({Valid:d.valid,Possible:d.possible,Country:d.country,Type:d.type,International:d.international,National:d.national}),
+ numverify:d=>f({Valid:d.valid,Country:d.country_name,Location:d.location,Carrier:d.carrier,"Line type":d.line_type}),
+ abstractphone:d=>f({Valid:d.valid,Country:d.country?.name,Location:d.location,Carrier:d.carrier,Type:d.type}),
+ nvd:d=>d.vulnerabilities.slice(0,8).map(v=>v.cve.id+": "+(v.cve.descriptions.find(x=>x.lang==="en")?.value||"").slice(0,240)),
+ kev:d=>d.matches.length?d.matches.map(v=>v.cveID+" — "+v.vendorProject+" "+v.product+": "+v.vulnerabilityName):["Not in the CISA catalog"],
+ otx:d=>f({Indicator:d.indicator,Pulses:d.pulse_info?.count,Reputation:d.reputation,Country:d.country_name,ASN:d.asn}),
+ malwarebazaar:d=>d.query_status==="ok"?d.data.map(x=>`${x.file_name||"file"} · ${x.signature||"unknown"} · ${x.file_type}`):["No sample found"],
+ threatfox:d=>d.query_status==="ok"?d.data.map(x=>x.ioc+" · "+x.malware_printable):["No IOC found"],
+ phishtank:d=>f({"In database":d.results?.in_database,Valid:d.results?.valid,Detail:d.results?.phish_detail_page}),
+ opencorporates:d=>d.results.companies.map(c=>({t:c.company.name+" ("+c.company.jurisdiction_code+") "+(c.company.current_status||""),u:c.company.opencorporates_url})),
+ wikidata:d=>d.search.map(s=>({t:s.label+" — "+(s.description||"no description"),u:"https:"+s.url})),
+ gdelt:d=>(d.articles||[]).map(a=>({t:a.title+" ("+a.domain+")",u:a.url})),
+ archive:d=>d.response.docs.map(x=>({t:x.title||x.identifier,u:"https://archive.org/details/"+x.identifier})),
+ nominatim:d=>d.map(x=>({t:x.display_name,u:`https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=15/${x.lat}/${x.lon}`})),
+ exif:d=>d?f({Camera:[d.Make,d.Model].filter(Boolean).join(" "),Taken:d.DateTimeOriginal,Software:d.Software,Latitude:d.latitude,Longitude:d.longitude,Size:d.ExifImageWidth&&d.ExifImageWidth+"×"+d.ExifImageHeight}):["No metadata found"],
+ ocr:t=>[String(t).trim()||"No text found"]
+};
+
+const $=s=>document.querySelector(s),el=(t,p={})=>Object.assign(document.createElement(t),p);
+const load=src=>new Promise((ok,no)=>{const s=el("script",{src,onload:ok,onerror:no});document.head.append(s)});
+const rep=$("#rep");
+
+function card(t,q){
+ const[n,u]=N[t].split("|"),box=el("div",{className:"r"}),h=el("h3"),a=el("a",{href:u,target:"_blank",rel:"noopener",textContent:n+(t==="dns"?" "+q.split(" ")[1]:"")}),st=el("span",{className:"s",textContent:"running…"});
+ h.append(a,st);box.append(h);rep.append(box);
+ return{box,
+  done(lines,raw){
+   st.remove();box.dataset.ok=1;
+   if(lines.length){const ul=el("ul");lines.forEach(l=>{const li=el("li");if(l.u)li.append(el("a",{href:l.u,target:"_blank",rel:"noopener",textContent:l.t}));else li.textContent=l;ul.append(li)});box.append(ul)}
+   if(raw!==undefined){const d=el("details"),s=el("summary",{textContent:"Raw data"}),p=el("pre",{textContent:typeof raw==="string"?raw:JSON.stringify(raw,null,2)});d.append(s,p);box.append(d)}
+  },
+  note(m,drop){st.textContent=m;if(drop)box.style.display="none"}
+ };
+}
+async function job(t,q){
+ const c=card(t,q);
+ try{
+  let d,raw;
+  if(t==="phone"){
+   await load("https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.60/bundle/libphonenumber-max.js");
+   const p=libphonenumber.parsePhoneNumberFromString(q.startsWith("+")?q:"+"+q.replace(/\D/g,""));
+   if(!p)return c.note("Could not parse. Start with + and the country code.");
+   d={valid:p.isValid(),possible:p.isPossible(),country:p.country,type:p.getType(),international:p.formatInternational(),national:p.formatNational()};raw=d;
+  }else{
+   const r=await fetch(`/api?t=${t}&q=${encodeURIComponent(q)}`),tx=await r.text();
+   if(r.status===404)return c.note("No results");
+   if(!r.ok){let m="";try{m=JSON.parse(tx).error}catch{}
+    if(/^Add the environment variable (\w+)/.test(m))return c.note("skipped, needs "+m.match(/variable (\w+)/)[1]);
+    return c.note(m?"failed: "+m:"failed ("+r.status+")")}
+   try{d=JSON.parse(tx)}catch{d=tx}raw=d;
   }
-  return d;
+  let lines=[];try{lines=S[t](d,q.replace(/ (A|MX|NS|TXT)$/,""))||[]}catch{}
+  if(!lines.length&&typeof d==="string"&&d.trim())lines=d.split("\n").slice(0,20);
+  c.done(lines,raw);
+ }catch(e){c.note("failed: "+e.message)}
 }
-function draw(){
-  const q=$("#s").value.toLowerCase().trim(),l=$("#list");l.textContent="";
-  [...nav.children].forEach((b,i)=>b.setAttribute("aria-pressed",!q&&i===cat));
-  const rows=R.filter(r=>q?(r[2]+" "+C[r[0]]+" "+(r[6]||"")).toLowerCase().includes(q):r[0]===cat);
-  rows.forEach(r=>l.append(tool(r)));
-  if(!rows.length)l.append(el("p",{className:"sub",textContent:"No tools match that filter."}));
+async function image(file){
+ start("Image: "+file.name);
+ const a=card("exif",""),b=card("ocr","");
+ try{await load("https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js");const d=await exifr.parse(file,true);a.done(S.exif(d),d?JSON.parse(JSON.stringify(d,(k,v)=>v instanceof Uint8Array?"[binary]":v)):undefined)}catch(e){a.note("failed: "+e.message)}
+ try{await load("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");const r=await Tesseract.recognize(file,"eng");b.done(S.ocr(r.data.text))}catch(e){b.note("failed: "+e.message)}
+ end();
 }
-$("#s").oninput=draw;draw();
+function start(h){rep.textContent="";rep.append(el("div",{id:"head",textContent:h}));$("#cp").hidden=false}
+function end(){
+ const k=[...rep.querySelectorAll(".r")].filter(x=>x.dataset.ok).length;
+ const sk=[...rep.querySelectorAll(".s")].filter(x=>x.textContent.startsWith("skipped")).length;
+ if(sk){rep.append(el("p",{className:"mut",textContent:sk+" source(s) skipped because no API key is set. Add the keys in Netlify to include them."}))}
+ return k;
+}
+async function trace(raw){
+ const v=raw.trim();if(!v)return;
+ const type=detect(v);let q=v;
+ if(type==="domain"||type==="email")q=v.toLowerCase();
+ history.replaceState(null,"","?q="+encodeURIComponent(v));
+ start(`${LBL[type]}: ${q}`);
+ const seen=new Set(),jobs=P[type](q).filter(([t,x])=>!seen.has(t+x)&&seen.add(t+x));
+ await Promise.all(jobs.map(([t,x])=>job(t,x)));
+ end();
+ const cmds=(LOCAL[type]||(()=>[]))(q);
+ if(cmds.length){const b=el("div",{className:"r"});b.append(el("h3",{textContent:"Go deeper locally"}),el("p",{className:"mut",textContent:"These tools need your own machine. Copy a command:"}));const ul=el("ul");cmds.forEach(c=>{const li=el("li");li.append(el("code",{textContent:c}));ul.append(li)});b.append(ul);rep.append(b)}
+}
+$("#f").onsubmit=e=>{e.preventDefault();trace($("#q").value)};
+$("#img").onchange=e=>e.target.files[0]&&image(e.target.files[0]);
+$("#cp").onclick=async()=>{await navigator.clipboard.writeText(rep.innerText);$("#cp").textContent="Copied";setTimeout(()=>$("#cp").textContent="Copy report",1500)};
+const src=$("#src");
+Object.entries(N).forEach(([,v])=>{const[n,u]=v.split("|");src.append(el("a",{href:u,target:"_blank",rel:"noopener",textContent:n}),document.createTextNode("  "))});
+Object.entries(MORE).forEach(([k,l])=>{src.append(el("p",{className:"mut",textContent:k}));l.forEach(([n,u])=>src.append(el("a",{href:u,target:"_blank",rel:"noopener",textContent:n}),document.createTextNode("  ")))});
+const pq=new URLSearchParams(location.search).get("q");if(pq){$("#q").value=pq;trace(pq)}
 </script>
 </body>
 </html>

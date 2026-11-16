@@ -77,7 +77,7 @@ exports.handler = async (ev) => {
       const k = JSON.parse(text), n = query.toLowerCase();
       text = JSON.stringify({ catalogVersion: k.catalogVersion, matches: k.vulnerabilities.filter(v => JSON.stringify(v).toLowerCase().includes(n)).slice(0, 25) });
     }
-    return json(r.status >= 400 ? 502 : 200, text.length > 400000 ? text.slice(0, 400000) : text);
+    return json(r.status === 404 ? 404 : r.status >= 400 ? 502 : 200, text.length > 400000 ? text.slice(0, 400000) : text);
   } catch (e) {
     return json(502, { error: "Upstream request failed: " + e.message });
   }
