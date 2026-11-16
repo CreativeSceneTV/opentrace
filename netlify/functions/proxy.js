@@ -37,7 +37,7 @@ const T = {
   phishtank: ["PHISHTANK_KEY", q => ({ u: "https://checkurl.phishtank.com/checkurl/", m: "POST", h: FORM, b: form({ url: Buffer.from(q).toString("base64"), format: "json", app_key: E.PHISHTANK_KEY }) })],
   opencorporates: ["OPENCORPORATES_KEY", q => ({ u: `https://api.opencorporates.com/v0.4/companies/search?q=${enc(q)}&api_token=${E.OPENCORPORATES_KEY}` })],
   wikidata: [null, q => ({ u: `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${enc(q)}&language=en&format=json&limit=10` })],
-  gdelt: [null, q => ({ u: `https://api.gdeltproject.org/api/v2/doc/doc?query=${enc(q)}&mode=artlist&maxrecords=15&format=json` })],
+  gdelt: [null, q => ({ u: `https://api.gdeltproject.org/api/v2/doc/doc?query=${enc(q)}&mode=artlist&maxrecords=10&format=json` })],
   archive: [null, q => ({ u: `https://archive.org/advancedsearch.php?q=${enc(q)}&fl[]=identifier&fl[]=title&rows=15&output=json` })],
   nominatim: [null, q => ({ u: `https://nominatim.openstreetmap.org/search?q=${enc(q)}&format=json&limit=5&addressdetails=1` })],
   geonames: ["GEONAMES_USER", q => ({ u: `http://api.geonames.org/searchJSON?q=${enc(q)}&maxRows=10&username=${E.GEONAMES_USER}` })],
@@ -76,7 +76,14 @@ exports.handler = async (ev) => {
     if (!tool) return json(404, { error: "Unknown tool." });
     if (tool[0] && !E[tool[0]]) return json(400, { error: `Add the environment variable ${tool[0]} in Netlify (Site settings → Environment variables), then redeploy.` });
     const { u, h = {}, m = "GET", b } = tool[1](query);
-    const r = await fetch(u, { method: m, headers: { ...UA, ...h }, body: b, signal: tmo(9000) });
+    const tries = t === "gdelt" ? 2 : 1; // GDELT is slow and flaky: two quick attempts
+    let r;
+    for (let i = 0; i < tries; i++) {
+      try {
+        r = await fetch(u, { method: m, headers: { ...UA, ...h }, body: b, signal: tmo(tries > 1 ? 4400 : 9000) });
+        if (r.ok) break;
+      } catch (e) { if (i === tries - 1) throw e; }
+    }
     let text = await r.text();
     if (t === "kev") {
       const k = JSON.parse(text), n = query.toLowerCase();
