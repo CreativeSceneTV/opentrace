@@ -14,7 +14,8 @@ h1{font-size:1.5rem;margin:0 0 4px;letter-spacing:-.01em}
 .sub,.mut{color:var(--mut)}.sub{margin:0 0 24px}
 a{color:var(--acc);overflow-wrap:anywhere}
 input,button{font:inherit;color:inherit}
-form{display:flex;gap:8px}
+form{display:flex;gap:8px;flex-wrap:wrap}
+#n{flex:0 0 100%;order:3;padding:9px 14px;border:1px solid var(--line);background:var(--bg);border-radius:6px;font-size:.95rem}
 #q{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--line);background:var(--bg);border-radius:6px;font-size:1.05rem}
 form button{border:1px solid var(--fg);background:var(--fg);color:var(--bg);padding:0 20px;border-radius:6px;cursor:pointer}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
@@ -39,20 +40,23 @@ footer p{margin:6px 0}
 <main>
 <h1>OpenTrace</h1>
 <p class="sub">Type a name, email, phone number, username, IP, domain, URL, CVE or file hash. A report builds itself.</p>
-<form id="f"><input id="q" type="search" placeholder="Search anything…" autocomplete="off" spellcheck="false" autofocus aria-label="Search"><button>Trace</button></form>
+<form id="f"><input id="q" type="search" placeholder="Search anything…" autocomplete="off" spellcheck="false" autofocus aria-label="Search"><button>Trace</button><input id="n" type="search" placeholder="Narrow it down (optional): city, employer, school…" autocomplete="off" spellcheck="false" aria-label="Narrow down"></form>
 <div class="row"><label>Or analyze an image<input id="img" type="file" accept="image/*" hidden></label><span id="acts" hidden><button id="tx">Download .txt</button> <button id="pf">Download PDF</button> <button id="cp">Copy</button> <button id="cl">Clear</button></span></div>
 <div id="rep" aria-live="polite"></div>
 <footer>
 <details><summary>All sources</summary><div id="src"></div></details>
-<p>Use these sources lawfully and respect privacy, provider terms and data-protection laws. This site does not save searches, reports or history. Lookups are sent to the data sources above, which have their own policies. Results are public data and may be incomplete or about someone else with the same name. Open source (MIT).</p>
+<p>Use these sources lawfully and respect privacy, provider terms and data-protection laws. This site does not save searches, reports or history. Lookups are sent to the data sources above, which have their own policies. Sources that need an API key appear once one is added in Netlify. Results are public data and may be incomplete or about someone else with the same name. Open source (MIT).</p>
 </footer>
 </main>
 <script>
-const N={ipinfo:"IPinfo|https://ipinfo.io/",ipapi:"IP-API|https://ip-api.com/",ripestat:"RIPEstat|https://stat.ripe.net/",rdap:"RDAP|https://rdap.org/",dns:"Google DNS|https://dns.google/",hackertarget:"HackerTarget|https://hackertarget.com/",abuseipdb:"AbuseIPDB|https://www.abuseipdb.com/",greynoise:"GreyNoise|https://www.greynoise.io/",crtsh:"crt.sh|https://crt.sh/",urlhaus:"URLhaus|https://urlhaus.abuse.ch/",urlscan:"urlscan.io|https://urlscan.io/",safebrowsing:"Google Safe Browsing|https://developers.google.com/safe-browsing",commoncrawl:"Common Crawl|https://commoncrawl.org/",wayback:"Wayback Machine|https://web.archive.org/",dnsdumpster:"DNSDumpster|https://dnsdumpster.com/",securitytrails:"SecurityTrails|https://securitytrails.com/",social:"Social profile links|https://osintframework.com/",wmn:"WhatsMyName|https://github.com/WebBreacher/WhatsMyName",hibp:"Have I Been Pwned|https://haveibeenpwned.com/",hunter:"Hunter|https://hunter.io/",emailrep:"EmailRep|https://emailrep.io/",phone:"libphonenumber|https://github.com/google/libphonenumber",numverify:"Numverify|https://numverify.com/",abstractphone:"Abstract Phone Validation|https://www.abstractapi.com/phone-validation-api",exif:"ExifTool-style metadata|https://exiftool.org/",ocr:"Tesseract OCR|https://github.com/tesseract-ocr/tesseract",nvd:"NIST NVD|https://nvd.nist.gov/",kev:"CISA KEV|https://www.cisa.gov/known-exploited-vulnerabilities-catalog",otx:"AlienVault OTX|https://otx.alienvault.com/",malwarebazaar:"MalwareBazaar|https://bazaar.abuse.ch/",threatfox:"ThreatFox|https://threatfox.abuse.ch/",phishtank:"PhishTank|https://phishtank.org/",opencorporates:"OpenCorporates|https://opencorporates.com/",wikidata:"Wikidata|https://www.wikidata.org/",gdelt:"GDELT|https://www.gdeltproject.org/",archive:"Internet Archive|https://archive.org/",nominatim:"Nominatim|https://nominatim.org/",geonames:"GeoNames|https://www.geonames.org/"};
+const N={ipinfo:"IPinfo|https://ipinfo.io/",ipapi:"IP-API|https://ip-api.com/",ripestat:"RIPEstat|https://stat.ripe.net/",rdap:"RDAP|https://rdap.org/",dns:"Google DNS|https://dns.google/",hackertarget:"HackerTarget|https://hackertarget.com/",abuseipdb:"AbuseIPDB|https://www.abuseipdb.com/",greynoise:"GreyNoise|https://www.greynoise.io/",crtsh:"crt.sh|https://crt.sh/",urlhaus:"URLhaus|https://urlhaus.abuse.ch/",urlscan:"urlscan.io|https://urlscan.io/",safebrowsing:"Google Safe Browsing|https://developers.google.com/safe-browsing",commoncrawl:"Common Crawl|https://commoncrawl.org/",wayback:"Wayback Machine|https://web.archive.org/",dnsdumpster:"DNSDumpster|https://dnsdumpster.com/",securitytrails:"SecurityTrails|https://securitytrails.com/",social:"Social profile links|",wmn:"WhatsMyName|https://github.com/WebBreacher/WhatsMyName",hibp:"Have I Been Pwned|https://haveibeenpwned.com/",hunter:"Hunter|https://hunter.io/",emailrep:"EmailRep|https://emailrep.io/",phone:"libphonenumber|https://github.com/google/libphonenumber",numverify:"Numverify|https://numverify.com/",abstractphone:"Abstract Phone Validation|https://www.abstractapi.com/phone-validation-api",exif:"ExifTool-style metadata|https://exiftool.org/",ocr:"Tesseract OCR|https://github.com/tesseract-ocr/tesseract",nvd:"NIST NVD|https://nvd.nist.gov/",kev:"CISA KEV|https://www.cisa.gov/known-exploited-vulnerabilities-catalog",otx:"AlienVault OTX|https://otx.alienvault.com/",malwarebazaar:"MalwareBazaar|https://bazaar.abuse.ch/",threatfox:"ThreatFox|https://threatfox.abuse.ch/",phishtank:"PhishTank|https://phishtank.org/",opencorporates:"OpenCorporates|https://opencorporates.com/",wikidata:"Wikidata|https://www.wikidata.org/",gdelt:"GDELT|https://www.gdeltproject.org/",archive:"Internet Archive|https://archive.org/",nominatim:"Nominatim|https://nominatim.org/",geonames:"GeoNames|https://www.geonames.org/"};
 const MORE={"Run locally or open in a new tab":[["Sherlock","https://github.com/sherlock-project/sherlock"],["Maigret","https://github.com/soxoj/maigret"],["Blackbird","https://github.com/p1ngul1n0/blackbird"],["Social Analyzer","https://github.com/qeeqbox/social-analyzer"],["Holehe","https://github.com/megadose/holehe"],["theHarvester","https://github.com/laramies/theHarvester"],["Epieos","https://epieos.com/"],["PhoneInfoga","https://github.com/sundowndev/phoneinfoga"],["ExifTool","https://exiftool.org/"],["FotoForensics","https://fotoforensics.com/"],["CyberChef","https://github.com/gchq/CyberChef"],["YARA","https://github.com/VirusTotal/yara"],["MediaInfo","https://mediaarea.net/en/MediaInfo"],["OpenCV","https://opencv.org/"],["Google Lens","https://lens.google/"],["MISP","https://github.com/MISP/MISP"],["OpenCTI","https://github.com/OpenCTI-Platform"],["YARA Rules","https://github.com/Yara-Rules/rules"],["OpenStreetMap","https://www.openstreetmap.org/"],["SpiderFoot","https://github.com/smicallef/spiderfoot"],["OWASP Amass","https://github.com/owasp-amass/amass"],["ProjectDiscovery","https://github.com/projectdiscovery"],["OSINT Framework","https://osintframework.com/"],["APIs for OSINT","https://github.com/cipher387/API-s-for-OSINT"],["OpenOSINT","https://github.com/OpenOSINT/OpenOSINT"]]};
 
+let X="";
+const terms=()=>X.split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+const Q=(q,sep=" ")=>[q,...terms()].map(x=>'"'+x+'"').join(sep);
 const J=(t,...a)=>a.map(q=>[t,q]);
-const DOM=q=>[...J("dns",q+" A",q+" MX",q+" NS",q+" TXT"),...["rdap","crtsh","wayback","urlscan","hackertarget","otx","urlhaus","securitytrails","dnsdumpster","hunter"].map(t=>[t,q]),["commoncrawl",q+"/*"],["safebrowsing","http://"+q+"/"]];
+const DOM=q=>[...J("dns",q+" A",q+" MX",q+" NS",q+" TXT"),...["rdap","crtsh","urlscan","hackertarget","otx","urlhaus","securitytrails","dnsdumpster","hunter"].map(t=>[t,q]),["commoncrawl",q+"/*"],["wayback",q+"/*"],["safebrowsing","http://"+q+"/"]];
 const P={
  ip:q=>["ipinfo","ipapi","ripestat","rdap","abuseipdb","greynoise","otx"].map(t=>[t,q]),
  domain:DOM,
@@ -60,7 +64,7 @@ const P={
  email:q=>{const[u,d]=q.split("@");return[["emailrep",q],["hibp",q],["dns",d+" MX"],["rdap",d],["wmn",u]]},
  phone:q=>[["phone",q],["numverify",q],["abstractphone",q]],
  username:q=>[["social",q.replace(/^@/,"")],["wmn",q.replace(/^@/,"")]],
- name:q=>[["social",q],...(/\s/.test(q)?[]:[["wmn",q]]),...["wikidata","gdelt","archive","opencorporates","nominatim"].map(t=>[t,q])],
+ name:q=>[["social",q],...(/\s/.test(q)?[]:[["wmn",q]]),["wikidata",q],["gdelt",Q(q)],["archive",Q(q," AND ")],["opencorporates",q],...(/[\d,]/.test(q)?[["nominatim",q]]:[])],
  cve:q=>[["nvd",q],["kev",q]],
  hash:q=>[["malwarebazaar",q],["otx",q],["threatfox",q]]
 };
@@ -130,15 +134,15 @@ const $=s=>document.querySelector(s),el=(t,p={})=>Object.assign(document.createE
 const load=src=>new Promise((ok,no)=>{const s=el("script",{src,onload:ok,onerror:no});document.head.append(s)});
 const rep=$("#rep");
 function social(q){
- const h=encodeURIComponent(q.replace(/\s+/g,"")),e=encodeURIComponent(q),g=x=>"https://www.google.com/search?q="+encodeURIComponent(x);
+ const h=encodeURIComponent(q.replace(/\s+/g,"")),e=encodeURIComponent((q+" "+terms().join(" ")).trim()),g=x=>"https://www.google.com/search?q="+encodeURIComponent(x);
  const direct=[["Instagram","https://www.instagram.com/"+h+"/"],["TikTok","https://www.tiktok.com/@"+h],["X","https://x.com/"+h],["Facebook","https://www.facebook.com/"+h],["YouTube","https://www.youtube.com/@"+h],["Threads","https://www.threads.net/@"+h],["Snapchat","https://www.snapchat.com/add/"+h],["Reddit","https://www.reddit.com/user/"+h],["GitHub","https://github.com/"+h],["Twitch","https://www.twitch.tv/"+h],["Pinterest","https://www.pinterest.com/"+h+"/"],["LinkedIn","https://www.linkedin.com/in/"+h],["Telegram","https://t.me/"+h],["Medium","https://medium.com/@"+h],["SoundCloud","https://soundcloud.com/"+h],["Linktree","https://linktr.ee/"+h]];
- const find=[["Google","\""+q+"\""],["Instagram (via Google)","\""+q+"\" site:instagram.com"],["Facebook (via Google)","\""+q+"\" site:facebook.com"],["LinkedIn (via Google)","\""+q+"\" site:linkedin.com/in"],["TikTok (via Google)","\""+q+"\" site:tiktok.com"]].map(([n,x])=>({t:"Search "+n,u:g(x)}));
+ const find=[["Google",Q(q)],["Instagram (via Google)",Q(q)+" site:instagram.com"],["Facebook (via Google)",Q(q)+" site:facebook.com"],["LinkedIn (via Google)",Q(q)+" site:linkedin.com/in"],["TikTok (via Google)",Q(q)+" site:tiktok.com"]].map(([n,x])=>({t:"Search "+n,u:g(x)}));
  find.push({t:"Search X people",u:"https://x.com/search?q="+e+"&f=user"},{t:"Search Facebook people",u:"https://www.facebook.com/search/people/?q="+e},{t:"Search LinkedIn people",u:"https://www.linkedin.com/search/results/people/?keywords="+e},{t:"Search TikTok users",u:"https://www.tiktok.com/search/user?q="+e});
- return["Searches for \""+q+"\" (open each to see matches):",...find,"Direct profile pages if \""+decodeURIComponent(h)+"\" is the username. These open the page and are not checked, so some may not exist:",...direct.map(([n,u])=>({t:n,u}))];
+ return{find:[...find],direct:direct.map(([n,u])=>({t:n,u})),h:decodeURIComponent(h)};
 }
 
 function card(t,q){
- const[n,u]=N[t].split("|"),box=el("div",{className:"r"}),h=el("h3"),a=el("a",{href:u,target:"_blank",rel:"noopener",textContent:n+(t==="dns"?" "+q.split(" ")[1]:"")}),st=el("span",{className:"s",textContent:"running…"});
+ const[n,u]=N[t].split("|"),box=el("div",{className:"r"}),h=el("h3"),a=el(u?"a":"span",{textContent:n+(t==="dns"?" "+q.split(" ")[1]:"")}),st=el("span",{className:"s",textContent:"running…"});if(u)Object.assign(a,{href:u,target:"_blank",rel:"noopener"});
  h.append(a,st);box.append(h);rep.append(box);
  return{box,
   done(lines,raw){
@@ -153,7 +157,7 @@ async function job(t,q){
  const c=card(t,q);
  try{
   let d,raw;
-  if(t==="social")return c.done(social(q));
+  if(t==="social"){const o=social(q);c.done(o.find);const d=el("details"),sm=el("summary",{textContent:"Direct profile pages if \""+o.h+"\" is the username (not checked, may not exist)"}),ul=el("ul");o.direct.forEach(l=>{const li=el("li");li.append(el("a",{href:l.u,target:"_blank",rel:"noopener",textContent:l.t}));ul.append(li)});d.append(sm,ul);return c.box.append(d)}
   if(t==="phone"){
    await load("https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.60/bundle/libphonenumber-max.js");
    const p=libphonenumber.parsePhoneNumberFromString(q.startsWith("+")?q:"+"+q.replace(/\D/g,""));
@@ -161,7 +165,7 @@ async function job(t,q){
    d={valid:p.isValid(),possible:p.isPossible(),country:p.country,type:p.getType(),international:p.formatInternational(),national:p.formatNational()};raw=d;
   }else{
    const r=await fetch("/api",{method:"POST",headers:{"Content-Type":"application/json"},referrerPolicy:"no-referrer",cache:"no-store",body:JSON.stringify({t,q})}),tx=await r.text();
-   if(r.status===404)return c.note("No results");
+   if(r.status===404)return t==="hibp"?c.done(["No breaches found"]):c.note("No results");
    if(!r.ok){let m="";try{m=JSON.parse(tx).error}catch{}
     if(/^Add the environment variable (\w+)/.test(m))return c.note("skipped, needs "+m.match(/variable (\w+)/)[1]);
     return c.note(m?"failed: "+m:"failed ("+r.status+")")}
@@ -169,6 +173,7 @@ async function job(t,q){
   }
   let lines=[];try{lines=S[t](d,q.replace(/ (A|MX|NS|TXT)$/,""))||[]}catch{}
   if(!lines.length&&typeof d==="string"&&d.trim())lines=d.split("\n").slice(0,20);
+  if(!lines.length)return c.note("No results");
   c.done(lines,raw);
  }catch(e){c.note("failed: "+e.message)}
 }
@@ -181,21 +186,24 @@ async function image(file){
 }
 function start(h){rep.textContent="";rep.append(el("div",{id:"head",textContent:h}));$("#acts").hidden=false}
 function end(){
- const k=[...rep.querySelectorAll(".r")].filter(x=>x.dataset.ok).length;
- const sk=[...rep.querySelectorAll(".s")].filter(x=>x.textContent.startsWith("skipped")).length;
- if(sk){rep.append(el("p",{className:"mut",textContent:sk+" source(s) skipped because no API key is set. Add the keys in Netlify to include them."}))}
- return k;
+ const bad=[...rep.querySelectorAll(".r")].filter(x=>!x.dataset.ok&&x.querySelector(".s"));
+ if(!bad.length)return;
+ const d=el("details",{className:"r"});d.append(el("summary",{textContent:"No result from "+bad.length+" source"+(bad.length>1?"s":"")+" (empty, skipped or unreachable)"}));
+ bad.forEach(b=>{const h=b.querySelector("h3");d.append(el("div",{className:"mut",textContent:h.firstChild.textContent+": "+h.querySelector(".s").textContent}));b.remove()});
+ rep.append(d);
 }
+let run=0;
 async function trace(raw){
- const v=raw.trim();if(!v)return;
+ const v=raw.trim();if(!v)return;const id=++run;
  const type=detect(v);let q=v;
  if(type==="domain"||type==="email")q=v.toLowerCase();
- start(`${LBL[type]}: ${q}`);
+ X=$("#n").value.trim();start(`${LBL[type]}: ${q}`+(X&&(type==="name"||type==="username")?" (narrowed by "+X+")":""));
  const seen=new Set(),jobs=P[type](q).filter(([t,x])=>!seen.has(t+x)&&seen.add(t+x));
  await Promise.all(jobs.map(([t,x])=>job(t,x)));
- end();
+ if(id!==run)return;
  const cmds=(LOCAL[type]||(()=>[]))(q);
- if(cmds.length){const b=el("div",{className:"r"});b.append(el("h3",{textContent:"Go deeper locally"}),el("p",{className:"mut",textContent:"These tools need your own machine. Copy a command:"}));const ul=el("ul");cmds.forEach(c=>{const li=el("li");li.append(el("code",{textContent:c}));ul.append(li)});b.append(ul);rep.append(b)}
+ if(cmds.length){const b=el("div",{className:"r"});b.dataset.ok=1;b.append(el("h3",{textContent:"Go deeper locally"}),el("p",{className:"mut",textContent:"These tools need your own machine. Copy a command:"}));const ul=el("ul");cmds.forEach(c=>{const li=el("li");li.append(el("code",{textContent:c}));ul.append(li)});b.append(ul);rep.append(b)}
+ end();
 }
 $("#f").onsubmit=e=>{e.preventDefault();trace($("#q").value)};
 $("#img").onchange=e=>e.target.files[0]&&image(e.target.files[0]);
@@ -215,10 +223,10 @@ $("#pf").onclick=async()=>{
  reportText().split("\n").forEach(l=>d.splitTextToSize(l||" ",515).forEach(x=>{if(y>790){d.addPage();y=50}d.text(x,40,y);y+=14}));
  d.save("opentrace-report.pdf");
 };
-$("#cl").onclick=()=>{rep.textContent="";$("#q").value="";$("#img").value="";$("#acts").hidden=true};
+$("#cl").onclick=()=>{rep.textContent="";$("#q").value="";$("#n").value="";$("#img").value="";$("#acts").hidden=true};
 $("#cp").onclick=async()=>{await navigator.clipboard.writeText(rep.innerText);$("#cp").textContent="Copied";setTimeout(()=>$("#cp").textContent="Copy report",1500)};
 const src=$("#src");
-Object.entries(N).forEach(([,v])=>{const[n,u]=v.split("|");src.append(el("a",{href:u,target:"_blank",rel:"noopener",textContent:n}),document.createTextNode("  "))});
+Object.entries(N).forEach(([,v])=>{const[n,u]=v.split("|");if(u)src.append(el("a",{href:u,target:"_blank",rel:"noopener",textContent:n}),document.createTextNode("  "))});
 Object.entries(MORE).forEach(([k,l])=>{src.append(el("p",{className:"mut",textContent:k}));l.forEach(([n,u])=>src.append(el("a",{href:u,target:"_blank",rel:"noopener",textContent:n}),document.createTextNode("  ")))});
 
 </script>
