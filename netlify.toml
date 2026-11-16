@@ -6,3 +6,10 @@
   from = "/api"
   to = "/.netlify/functions/proxy"
   status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    Referrer-Policy = "no-referrer"
+    X-Robots-Tag = "noindex"

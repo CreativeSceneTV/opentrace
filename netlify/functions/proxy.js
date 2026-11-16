@@ -43,13 +43,15 @@ const T = {
   geonames: ["GEONAMES_USER", q => ({ u: `http://api.geonames.org/searchJSON?q=${enc(q)}&maxRows=10&username=${E.GEONAMES_USER}` })],
 };
 
-const json = (c, o) => ({ statusCode: c, headers: { "Content-Type": "application/json" }, body: typeof o === "string" ? o : JSON.stringify(o) });
+const json = (c, o) => ({ statusCode: c, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }, body: typeof o === "string" ? o : JSON.stringify(o) });
 const tmo = (ms) => AbortSignal.timeout(ms);
 
 // Username check using the WhatsMyName dataset
+const TOP = ["instagram","tiktok","twitter","github","reddit","youtube","facebook","pinterest","twitch","snapchat","telegram","threads","medium","soundcloud","spotify","steam","tumblr","vimeo","flickr","linkedin","linktree","about.me","behance","dribbble","deviantart","patreon","mastodon","keybase","gitlab","quora","wattpad","roblox","vk","pastebin","imgur","gravatar"];
+const pr = (n) => { const i = TOP.findIndex(t => (n || "").toLowerCase().includes(t)); return i < 0 ? 99 : i; };
 async function wmn(user) {
   const d = await (await fetch("https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json", { signal: tmo(5000) })).json();
-  const sites = d.sites.filter(s => s.uri_check && s.uri_check.includes("{account}") && !s.post_body && s.e_code).slice(0, 90);
+  const sites = d.sites.filter(s => s.uri_check && s.uri_check.includes("{account}") && !s.post_body && s.e_code).sort((a, b) => pr(a.name) - pr(b.name)).slice(0, 90);
   const out = await Promise.all(sites.map(async s => {
     try {
       const r = await fetch(s.uri_check.replace("{account}", enc(user)), { headers: UA, redirect: "manual", signal: tmo(5500) });
@@ -62,7 +64,10 @@ async function wmn(user) {
 }
 
 exports.handler = async (ev) => {
-  const { t, q = "" } = ev.queryStringParameters || {};
+  if (ev.httpMethod !== "POST") return json(405, { error: "POST only." });
+  let t, q = "";
+  try { ({ t, q = "" } = JSON.parse(ev.body || "{}")); } catch (e) { return json(400, { error: "Bad request." }); }
+  q = String(q);
   const query = q.trim().slice(0, 300);
   if (!query) return json(400, { error: "Enter a value first." });
   try {
